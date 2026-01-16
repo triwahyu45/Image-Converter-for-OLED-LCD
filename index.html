@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to SSD1306 Converter</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; background: #f0f0f0; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        .preview-box { margin: 1rem 0; border: 2px solid #333; display: inline-block; background: black; }
+        canvas { display: block; image-rendering: pixelated; } /* Supaya kelihatan kotak-kotak pixelnya */
+        textarea { width: 100%; height: 200px; margin-top: 1rem; font-family: monospace; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
+        button:hover { background: #0056b3; }
+        .note { font-size: 0.9rem; color: #666; margin-bottom: 1rem;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Konverter Gambar ke OLED (128x32)</h1>
+    <p>Upload gambar apa saja, tool ini akan mengubahnya menjadi kode C++ untuk Arduino (Library Adafruit).</p>
+    
+    <input type="file" id="uploadInput" accept="image/*">
+    <br><br>
+    
+    <p>Preview (Hasil Resize):</p>
+    <div class="preview-box">
+        <canvas id="previewCanvas" width="128" height="32"></canvas>
+    </div>
+    
+    <div class="controls">
+        <p>Threshold (Geser untuk atur gelap/terang): <span id="threshVal">128</span></p>
+        <input type="range" id="threshold" min="0" max="255" value="128">
+    </div>
+
+    <br>
+    <button onclick="generateCode()">Generate Kode Arduino</button>
+
+    <textarea id="outputCode" placeholder="Kode Hex akan muncul di sini..."></textarea>
+    <p class="note">Tips: Copy hasil kode di atas, paste di atas void setup() di Arduino IDE.</p>
+</div>
+
+<script>
+    const canvas = document.getElementById('previewCanvas');
+    const ctx = canvas.getContext('2d');
+    const input = document.getElementById('uploadInput');
+    const thresholdSlider = document.getElementById('threshold');
+    const threshValDisplay = document.getElementById('threshVal');
+    let originalImage = null;
+
+    // Saat upload gambar
+    input.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                originalImage = img;
+                processImage(); // Gambar ulang
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    });
+
+    // Saat slider digeser
+    thresholdSlider.addEventListener('input', function() {
+        threshValDisplay.innerText = this.value;
+        processImage();
+    });
+
+    function processImage() {
+        if(!originalImage) return;
+
+        // 1. Gambar ke canvas (resize otomatis ke 128x32)
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, 128, 32);
+        ctx.drawImage(originalImage, 0, 0, 128, 32);
+
+        // 2. Ubah jadi hitam putih (Biner) visual
+        const imageData = ctx.getImageData(0, 0, 128, 32);
+        const data = imageData.data;
+        const limit = parseInt(thresholdSlider.value);
+
+        for (let i = 0; i < data.length; i += 4) {
+            // Hitung rata-rata RGB
+            const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            // Jika lebih terang dari limit, jadi putih (255), jika tidak jadi hitam (0)
+            // OLED: Putih = Menyala, Hitam = Mati
+            const color = avg > limit ? 255 : 0;
+            data[i] = color;     // R
+            data[i+1] = color;   // G
+            data[i+2] = color;   // B
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    function generateCode() {
+        if(!originalImage) { alert("Upload gambar dulu!"); return; }
+
+        const imageData = ctx.getImageData(0, 0, 128, 32);
+        const data = imageData.data;
+        let output = `// Gambar Bitmaps Ukuran 128x32\nconst unsigned char PROGMEM myBitmap[] = {\n`;
+        
+        // Loop Horizontal (Baris per baris)
+        // Library Adafruit GFX menggunakan format Horizontal Byte
+        let byteValue = 0;
+        let bitIndex = 0;
+        let hexString = "";
+        let count = 0;
+
+        // Total pixel = 128 * 32
+        // Kita loop setiap pixel, kumpulkan 8 pixel jadi 1 byte
+        for (let i = 0; i < (128 * 32); i++) {
+            // Ambil data warna pixel (kita cuma butuh R karena sudah grayscale)
+            // Pixel data structure: [R, G, B, A, R, G, B, A...]
+            const pixelBrightness = data[i * 4]; 
+            
+            // Logic: Pixel Putih (255) = 1 (Nyala), Hitam (0) = 0 (Mati)
+            if (pixelBrightness > 128) {
+                byteValue |= (0x80 >> bitIndex); // Set bit ke-1
+            }
+
+            bitIndex++;
+            
+            if (bitIndex == 8) {
+                // Sudah 8 bit (1 byte), format ke Hex
+                let hex = "0x" + byteValue.toString(16).toUpperCase().padStart(2, '0');
+                hexString += hex + ", ";
+                count++;
+                if (count % 16 === 0) hexString += "\n"; // Enter setiap 16 byte biar rapi
+                
+                // Reset
+                byteValue = 0;
+                bitIndex = 0;
+            }
+        }
+
+        output += hexString;
+        output += "\n};";
+        
+        document.getElementById('outputCode').value = output;
+    }
+</script>
+
+</body>
+</html>
