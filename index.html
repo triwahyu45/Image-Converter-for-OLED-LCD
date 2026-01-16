@@ -3,128 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dark OLED Converter</title>
+    <title>OLED Converter Pro | IG : @Triwahyu45</title>
     <style>
-        :root {
-            --bg-color: #121212;
-            --card-color: #1e1e1e;
-            --text-color: #e0e0e0;
-            --accent-color: #00d2ff;
-            --border-color: #333;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
-
-        .container {
-            background-color: var(--card-color);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
-            max-width: 800px;
-            width: 100%;
-            border: 1px solid var(--border-color);
-        }
-
-        h1 { margin-top: 0; color: var(--accent-color); font-size: 1.5rem; }
-        p { color: #aaa; font-size: 0.9rem; }
-
-        /* File Input Styling */
-        input[type="file"] {
-            background: #2b2b2b;
-            padding: 10px;
-            border-radius: 5px;
-            width: 100%;
-            box-sizing: border-box;
-            color: white;
-            border: 1px solid var(--border-color);
-            margin-bottom: 20px;
-        }
-
-        /* Canvas Preview */
-        .preview-area {
-            margin: 20px 0;
-            text-align: center;
-            background: #000;
-            padding: 10px;
-            border: 2px solid var(--accent-color);
-            display: inline-block;
-            border-radius: 4px;
-        }
+        :root { --bg-color: #121212; --card-color: #1e1e1e; --text-color: #e0e0e0; --accent-color: #00ddff; --border-color: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-color); color: var(--text-color); padding: 20px; display: flex; justify-content: center; }
+        .container { background: var(--card-color); padding: 2rem; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); max-width: 800px; width: 100%; border: 1px solid var(--border-color); }
+        h1 { color: var(--accent-color); margin-top: 0; }
         
+        /* Preview Area FIXED SIZE */
+        .preview-container {
+            text-align: center; margin: 20px 0;
+            background: #000; padding: 0; border: 2px solid var(--accent-color); 
+            display: inline-block;
+            /* Ukuran container dipaksa rasio 128x32 tapi diperbesar 4x agar jelas */
+            width: 512px; /* 128 * 4 */
+            height: 128px; /* 32 * 4 */
+            position: relative;
+        }
         canvas { 
-            display: block; 
-            image-rendering: pixelated; /* Agar pixel terlihat tajam */
+            display: block; image-rendering: pixelated; 
+            width: 100%; height: 100%;
         }
 
-        /* Slider */
-        .controls { margin: 20px 0; background: #252525; padding: 15px; border-radius: 8px; }
-        input[type="range"] { width: 100%; accent-color: var(--accent-color); }
+        .controls { background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        input[type="range"] { width: 100%; accent-color: var(--accent-color); cursor: pointer; }
+        
+        /* Button Group */
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        button { flex: 1; font-weight: bold; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;}
+        
+        .btn-gen { background: var(--accent-color); color: #fff; }
+        .btn-gen:hover { background: #00b8d4; }
+        
+        /* Style Tombol Copy Modern */
+        .btn-copy { background: #333; color: var(--accent-color); border: 1px solid var(--accent-color); }
+        .btn-copy:hover { background: #444; }
+        .btn-copy.copied { background: #00e676; color: #000; border-color: #00e676; } /* Warna Hijau saat dicopy */
 
-        /* Button */
-        button {
-            background-color: var(--accent-color);
-            color: #000;
-            font-weight: bold;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 1rem;
-            transition: 0.2s;
-        }
-        button:hover { background-color: #00a8cc; }
-
-        /* Output Box */
-        textarea {
-            width: 100%;
-            height: 250px;
-            margin-top: 20px;
-            background-color: #0f0f0f;
-            color: #00ff9d; /* Warna teks hacker */
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.85rem;
-            padding: 10px;
-            box-sizing: border-box;
-            resize: vertical;
-        }
+        textarea { width: 100%; height: 250px; margin-top: 10px; background: #0f0f0f; color: #00ddff; border: 1px solid var(--border-color); font-family: monospace; padding: 10px; box-sizing: border-box;}
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>OLED Image Converter (Pro)</h1>
-    <p>Upload gambar. Web ini akan otomatis resize (max 128x32) tanpa merusak rasio, lalu convert ke kode C++.</p>
-
-    <input type="file" id="uploadInput" accept="image/*">
+    <h1>OLED Converter Pro | IG : @Triwahyu45</h1>
+    <input type="file" id="uploadInput" accept="image/*" style="color:white; margin-bottom: 20px;">
 
     <div style="text-align: center;">
-        <div class="preview-area">
-            <canvas id="previewCanvas"></canvas>
+        <div class="preview-container">
+            <canvas id="previewCanvas" width="128" height="32"></canvas>
         </div>
-        <p id="dimInfo">Ukuran: 0 x 0 px</p>
+        <p id="dimInfo">Preview Visual: 0 x 0 px</p>
+    </div>
+
+    <div class="controls" style="border: 1px solid #00ddff;">
+        <label style="color: #00ddff; font-weight: bold;">1. SETTING KOREKSI (STRETCH)</label>
+        <p style="font-size: 0.8rem; margin: 5px 0; color: #aaa;">
+            0 = Normal (Otomatis x2 untuk LCD). Geser slider untuk mengubah lebar.
+        </p>
+        
+        <input type="range" id="ratioFix" min="-1.0" max="1.5" step="0.1" value="0">
+        
+        <div style="text-align: right; font-size: 0.9rem; color: #00ddff;">
+            Data Stretch: <span id="realFactor">2.0</span>x
+        </div>
     </div>
 
     <div class="controls">
-        <label>Threshold (Gelap/Terang): <span id="threshVal">128</span></label>
-        <br>
+        <label>2. Threshold (Hitam/Putih)</label>
         <input type="range" id="threshold" min="0" max="255" value="128">
     </div>
 
-    <button onclick="processAndGenerate()">Generate Code</button>
-
-    <textarea id="outputCode" readonly placeholder="Klik 'Generate Code' untuk melihat hasil..."></textarea>
+    <div class="btn-group">
+        <button class="btn-gen" onclick="generateCode()">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.7-3.7a1 1 0 0 0 0-1.4 1 1 0 0 0-1.4 0l-2.3 2.3-1.6-1.6a1 1 0 0 0-1.4 0Z"/><path d="M19.4 15a1 1 0 0 0 .6 1.9l2-2a1 1 0 0 0 0-1.4l-2-2a1 1 0 0 0-.6 1.9l.3.3h-4.6a1 1 0 0 0 0 2h4.6l-.3.3Z"/><path d="M3 13a9 9 0 0 1 15.3-6.3"/></svg>
+            Generate Code
+        </button>
+        <button class="btn-copy" id="copyBtn" onclick="copyCode()">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span>Copy Code</span>
+        </button>
+    </div>
+    
+    <textarea id="outputCode" readonly placeholder="Klik Generate Code..."></textarea>
 </div>
 
 <script>
@@ -132,133 +93,162 @@
     const ctx = canvas.getContext('2d');
     const input = document.getElementById('uploadInput');
     const thresholdSlider = document.getElementById('threshold');
+    const ratioSlider = document.getElementById('ratioFix');
     const dimInfo = document.getElementById('dimInfo');
+    const copyBtn = document.getElementById('copyBtn');
     
     let originalImage = null;
-    let finalWidth = 0;
-    let finalHeight = 0;
+    let visualWidth = 0, visualHeight = 0; // Ukuran tampilan di web
+    let codeWidth = 0, codeHeight = 0;     // Ukuran data asli (Hex)
+    
+    const MAX_W = 128;
+    const MAX_H = 32;
 
-    // Batas Maksimal Layar OLED SSD1306
-    const MAX_WIDTH = 128;
-    const MAX_HEIGHT = 32;
-
-    input.addEventListener('change', function(e) {
+    input.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if(!file) return;
-        
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = (event) => {
             const img = new Image();
-            img.onload = function() {
-                originalImage = img;
-                calculateDimensions();
-                drawPreview(); 
-            }
+            img.onload = () => { originalImage = img; updateAll(); }
             img.src = event.target.result;
         }
         reader.readAsDataURL(file);
     });
 
-    thresholdSlider.addEventListener('input', function() {
-        document.getElementById('threshVal').innerText = this.value;
-        drawPreview();
+    thresholdSlider.addEventListener('input', function() { updateAll(); });
+    
+    ratioSlider.addEventListener('input', function() { 
+        let real = 2.0 + parseFloat(this.value);
+        document.getElementById('realFactor').innerText = real.toFixed(1);
+        updateAll(); 
     });
 
-    // 1. Hitung Dimensi Baru (Keep Aspect Ratio)
-    function calculateDimensions() {
+    function updateAll() {
         if (!originalImage) return;
-
-        const ratio = Math.min(MAX_WIDTH / originalImage.width, MAX_HEIGHT / originalImage.height);
-        
-        // Memastikan tidak membesar-besarkan gambar kecil, tapi menyesuaikan gambar besar
-        // Kalau mau gambar kecil tetap kecil, hapus Math.min(..., 1)
-        // Disini kita paksa fit ke dalam kotak 128x32
-        
-        finalWidth = Math.floor(originalImage.width * ratio);
-        finalHeight = Math.floor(originalImage.height * ratio);
-
-        // Update ukuran canvas
-        canvas.width = finalWidth;
-        canvas.height = finalHeight;
-        dimInfo.innerText = `Ukuran Final: ${finalWidth} x ${finalHeight} px`;
+        calculateDimensions();
+        drawPreview(); 
     }
 
-    // 2. Gambar Preview (Hitam Putih)
+    function calculateDimensions() {
+        // 1. Hitung Ukuran Dasar (Proporsional Murni)
+        const ratio = Math.min(MAX_W / originalImage.width, MAX_H / originalImage.height);
+        let baseWidth = Math.floor(originalImage.width * ratio);
+        let baseHeight = Math.floor(originalImage.height * ratio);
+
+        // 2. Ambil Settingan Slider
+        const sliderVal = parseFloat(ratioSlider.value);
+        const stretchFactor = 2.0 + sliderVal; // Default total jadi 2.0x
+
+        // 3. Hitung Ukuran DATA CODE (Hex) -> Ini yang dikirim ke Arduino
+        codeWidth = Math.floor(baseWidth * stretchFactor);
+        codeHeight = baseHeight;
+
+        // 4. Hitung Ukuran PREVIEW WEB (Visual) -> Ini yang dilihat mata di sini
+        // LOGIKA BARU: 
+        // Kita normalisasi terhadap 2.0.
+        // Jika factor 2.0 (slider 0), maka previewWidth = baseWidth * 1 (Normal).
+        // Jika factor 3.0 (slider +), maka previewWidth = baseWidth * 1.5 (Melar).
+        visualWidth = Math.floor(baseWidth * (stretchFactor / 2.0));
+        visualHeight = baseHeight;
+
+        // Limit mentok di 128
+        if (codeWidth > MAX_W) codeWidth = MAX_W;
+        if (visualWidth > MAX_W) visualWidth = MAX_W;
+        if (codeHeight > MAX_H) codeHeight = MAX_H;
+
+        dimInfo.innerText = `Preview: ${visualWidth}x${visualHeight} | Data Code: ${codeWidth}x${codeHeight}`;
+    }
+
     function drawPreview() {
         if (!originalImage) return;
 
-        // Gambar original yang sudah di-resize
-        ctx.drawImage(originalImage, 0, 0, finalWidth, finalHeight);
+        // Bersihkan Canvas
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, MAX_W, MAX_H);
 
-        const imageData = ctx.getImageData(0, 0, finalWidth, finalHeight);
+        // Posisi tengah berdasarkan visualWidth (yang dinamis ikut slider)
+        const xPos = Math.floor((MAX_W - visualWidth) / 2);
+        const yPos = Math.floor((MAX_H - visualHeight) / 2);
+
+        // Gambar Image sesuai ukuran Visual (bisa melar/nyusut dikit tergantung slider)
+        ctx.drawImage(originalImage, xPos, yPos, visualWidth, visualHeight);
+
+        // Thresholding
+        const imageData = ctx.getImageData(0, 0, MAX_W, MAX_H);
         const data = imageData.data;
         const limit = parseInt(thresholdSlider.value);
 
         for (let i = 0; i < data.length; i += 4) {
             const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-            // Jika lebih terang dari limit -> Putih (Nyala)
-            // Jika lebih gelap -> Hitam (Mati)
             const color = avg > limit ? 255 : 0;
-            
-            data[i] = color;     // R
-            data[i+1] = color;   // G
-            data[i+2] = color;   // B
-            data[i+3] = 255;     // Alpha (Full Opaque)
+            data[i] = data[i+1] = data[i+2] = color; 
         }
         ctx.putImageData(imageData, 0, 0);
     }
 
-    // 3. Generate Kode C++
-    function processAndGenerate() {
-        if(!originalImage) { alert("Upload gambar dulu bos!"); return; }
+    function generateCode() {
+        if(!originalImage) { alert("Upload gambar dulu!"); return; }
 
-        const imageData = ctx.getImageData(0, 0, finalWidth, finalHeight);
+        // --- Generate Data menggunakan Ukuran CODE (Gepeng/Stretch) ---
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = MAX_W;
+        tempCanvas.height = MAX_H;
+        const tCtx = tempCanvas.getContext('2d');
+
+        // Posisi tengah untuk versi CODE
+        const xPos = Math.floor((MAX_W - codeWidth) / 2);
+        const yPos = Math.floor((MAX_H - codeHeight) / 2);
+
+        // Gambar versi CODE (Stretch penuh) di canvas bayangan
+        tCtx.drawImage(originalImage, xPos, yPos, codeWidth, codeHeight);
+
+        const imageData = tCtx.getImageData(xPos, yPos, codeWidth, codeHeight);
         const data = imageData.data;
+        const limit = parseInt(thresholdSlider.value);
         
-        // Header
-        let output = `// Masukkan kode ini di atas void setup()\n`;
-        output += `#define LOGO_WIDTH  ${finalWidth}\n`;
-        output += `#define LOGO_HEIGHT ${finalHeight}\n`;
-        output += `static const unsigned char PROGMEM logo_bmp[] = {\n`;
+        let output = `//Logonya Bang \n#define LOGO_WIDTH  ${codeWidth}\n#define LOGO_HEIGHT ${codeHeight}\nstatic const unsigned char PROGMEM logo_bmp[] = {\n`;
+        let hexString = ""; let count = 0;
 
-        let hexString = "";
-        let count = 0;
-
-        // Loop Pixel untuk konversi ke Hex Array
-        // SSD1306 library membaca: baris per baris (horizontal), 8 pixel per byte.
-        for (let y = 0; y < finalHeight; y++) {
-            for (let x = 0; x < finalWidth; x += 8) {
+        for (let y = 0; y < codeHeight; y++) {
+            for (let x = 0; x < codeWidth; x += 8) {
                 let byte = 0;
-                
-                // Ambil 8 pixel ke samping untuk dijadikan 1 byte
                 for (let b = 0; b < 8; b++) {
-                    const currentX = x + b;
-                    if (currentX < finalWidth) {
-                        const pixelIndex = (y * finalWidth + currentX) * 4;
-                        const brightness = data[pixelIndex]; // Ambil R saja cukup
-                        
-                        if (brightness > 128) {
-                            // Jika Putih, set bit menjadi 1
-                            byte |= (0x80 >> b);
-                        }
+                    if (x + b < codeWidth) {
+                        const i = ((y * codeWidth + x + b) * 4);
+                        const avg = (data[i] + data[i+1] + data[i+2]) / 3;
+                        if (avg > limit) byte |= (0x80 >> b);
                     }
                 }
-
-                // Format ke Hex (0x00)
                 hexString += "0x" + byte.toString(16).toUpperCase().padStart(2, '0') + ", ";
                 count++;
-                
-                // Enter setiap 12 byte agar rapi dilihat
                 if (count % 12 === 0) hexString += "\n  "; 
             }
         }
-
-        output += "  " + hexString;
-        output += "\n};";
-
+        
+        output += "  " + hexString + "\n};";
         document.getElementById('outputCode').value = output;
     }
-</script>
 
+    function copyCode() {
+        const copyText = document.getElementById("outputCode");
+        if(copyText.value.length < 1) { return; }
+        
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value).then(() => {
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = `
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Copied!</span>
+            `;
+            copyBtn.classList.add('copied');
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+                copyBtn.classList.remove('copied');
+            }, 2000);
+        });
+    }
+</script>
 </body>
 </html>
