@@ -3,43 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image to SSD1306 Converter</title>
+    <title>Dark OLED Converter</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; background: #f0f0f0; }
-        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
-        .preview-box { margin: 1rem 0; border: 2px solid #333; display: inline-block; background: black; }
-        canvas { display: block; image-rendering: pixelated; } /* Supaya kelihatan kotak-kotak pixelnya */
-        textarea { width: 100%; height: 200px; margin-top: 1rem; font-family: monospace; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
-        button:hover { background: #0056b3; }
-        .note { font-size: 0.9rem; color: #666; margin-bottom: 1rem;}
+        :root {
+            --bg-color: #121212;
+            --card-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #00d2ff;
+            --border-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-color);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+        }
+
+        h1 { margin-top: 0; color: var(--accent-color); font-size: 1.5rem; }
+        p { color: #aaa; font-size: 0.9rem; }
+
+        /* File Input Styling */
+        input[type="file"] {
+            background: #2b2b2b;
+            padding: 10px;
+            border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
+            color: white;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        /* Canvas Preview */
+        .preview-area {
+            margin: 20px 0;
+            text-align: center;
+            background: #000;
+            padding: 10px;
+            border: 2px solid var(--accent-color);
+            display: inline-block;
+            border-radius: 4px;
+        }
+        
+        canvas { 
+            display: block; 
+            image-rendering: pixelated; /* Agar pixel terlihat tajam */
+        }
+
+        /* Slider */
+        .controls { margin: 20px 0; background: #252525; padding: 15px; border-radius: 8px; }
+        input[type="range"] { width: 100%; accent-color: var(--accent-color); }
+
+        /* Button */
+        button {
+            background-color: var(--accent-color);
+            color: #000;
+            font-weight: bold;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+        button:hover { background-color: #00a8cc; }
+
+        /* Output Box */
+        textarea {
+            width: 100%;
+            height: 250px;
+            margin-top: 20px;
+            background-color: #0f0f0f;
+            color: #00ff9d; /* Warna teks hacker */
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Konverter Gambar ke OLED (128x32)</h1>
-    <p>Upload gambar apa saja, tool ini akan mengubahnya menjadi kode C++ untuk Arduino (Library Adafruit).</p>
-    
+    <h1>OLED Image Converter (Pro)</h1>
+    <p>Upload gambar. Web ini akan otomatis resize (max 128x32) tanpa merusak rasio, lalu convert ke kode C++.</p>
+
     <input type="file" id="uploadInput" accept="image/*">
-    <br><br>
-    
-    <p>Preview (Hasil Resize):</p>
-    <div class="preview-box">
-        <canvas id="previewCanvas" width="128" height="32"></canvas>
+
+    <div style="text-align: center;">
+        <div class="preview-area">
+            <canvas id="previewCanvas"></canvas>
+        </div>
+        <p id="dimInfo">Ukuran: 0 x 0 px</p>
     </div>
-    
+
     <div class="controls">
-        <p>Threshold (Geser untuk atur gelap/terang): <span id="threshVal">128</span></p>
+        <label>Threshold (Gelap/Terang): <span id="threshVal">128</span></label>
+        <br>
         <input type="range" id="threshold" min="0" max="255" value="128">
     </div>
 
-    <br>
-    <button onclick="generateCode()">Generate Kode Arduino</button>
+    <button onclick="processAndGenerate()">Generate Code</button>
 
-    <textarea id="outputCode" placeholder="Kode Hex akan muncul di sini..."></textarea>
-    <p class="note">Tips: Copy hasil kode di atas, paste di atas void setup() di Arduino IDE.</p>
+    <textarea id="outputCode" readonly placeholder="Klik 'Generate Code' untuk melihat hasil..."></textarea>
 </div>
 
 <script>
@@ -47,10 +132,16 @@
     const ctx = canvas.getContext('2d');
     const input = document.getElementById('uploadInput');
     const thresholdSlider = document.getElementById('threshold');
-    const threshValDisplay = document.getElementById('threshVal');
+    const dimInfo = document.getElementById('dimInfo');
+    
     let originalImage = null;
+    let finalWidth = 0;
+    let finalHeight = 0;
 
-    // Saat upload gambar
+    // Batas Maksimal Layar OLED SSD1306
+    const MAX_WIDTH = 128;
+    const MAX_HEIGHT = 32;
+
     input.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if(!file) return;
@@ -60,89 +151,111 @@
             const img = new Image();
             img.onload = function() {
                 originalImage = img;
-                processImage(); // Gambar ulang
+                calculateDimensions();
+                drawPreview(); 
             }
             img.src = event.target.result;
         }
         reader.readAsDataURL(file);
     });
 
-    // Saat slider digeser
     thresholdSlider.addEventListener('input', function() {
-        threshValDisplay.innerText = this.value;
-        processImage();
+        document.getElementById('threshVal').innerText = this.value;
+        drawPreview();
     });
 
-    function processImage() {
-        if(!originalImage) return;
+    // 1. Hitung Dimensi Baru (Keep Aspect Ratio)
+    function calculateDimensions() {
+        if (!originalImage) return;
 
-        // 1. Gambar ke canvas (resize otomatis ke 128x32)
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, 128, 32);
-        ctx.drawImage(originalImage, 0, 0, 128, 32);
+        const ratio = Math.min(MAX_WIDTH / originalImage.width, MAX_HEIGHT / originalImage.height);
+        
+        // Memastikan tidak membesar-besarkan gambar kecil, tapi menyesuaikan gambar besar
+        // Kalau mau gambar kecil tetap kecil, hapus Math.min(..., 1)
+        // Disini kita paksa fit ke dalam kotak 128x32
+        
+        finalWidth = Math.floor(originalImage.width * ratio);
+        finalHeight = Math.floor(originalImage.height * ratio);
 
-        // 2. Ubah jadi hitam putih (Biner) visual
-        const imageData = ctx.getImageData(0, 0, 128, 32);
+        // Update ukuran canvas
+        canvas.width = finalWidth;
+        canvas.height = finalHeight;
+        dimInfo.innerText = `Ukuran Final: ${finalWidth} x ${finalHeight} px`;
+    }
+
+    // 2. Gambar Preview (Hitam Putih)
+    function drawPreview() {
+        if (!originalImage) return;
+
+        // Gambar original yang sudah di-resize
+        ctx.drawImage(originalImage, 0, 0, finalWidth, finalHeight);
+
+        const imageData = ctx.getImageData(0, 0, finalWidth, finalHeight);
         const data = imageData.data;
         const limit = parseInt(thresholdSlider.value);
 
         for (let i = 0; i < data.length; i += 4) {
-            // Hitung rata-rata RGB
             const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-            // Jika lebih terang dari limit, jadi putih (255), jika tidak jadi hitam (0)
-            // OLED: Putih = Menyala, Hitam = Mati
+            // Jika lebih terang dari limit -> Putih (Nyala)
+            // Jika lebih gelap -> Hitam (Mati)
             const color = avg > limit ? 255 : 0;
+            
             data[i] = color;     // R
             data[i+1] = color;   // G
             data[i+2] = color;   // B
+            data[i+3] = 255;     // Alpha (Full Opaque)
         }
         ctx.putImageData(imageData, 0, 0);
     }
 
-    function generateCode() {
-        if(!originalImage) { alert("Upload gambar dulu!"); return; }
+    // 3. Generate Kode C++
+    function processAndGenerate() {
+        if(!originalImage) { alert("Upload gambar dulu bos!"); return; }
 
-        const imageData = ctx.getImageData(0, 0, 128, 32);
+        const imageData = ctx.getImageData(0, 0, finalWidth, finalHeight);
         const data = imageData.data;
-        let output = `// Gambar Bitmaps Ukuran 128x32\nconst unsigned char PROGMEM myBitmap[] = {\n`;
         
-        // Loop Horizontal (Baris per baris)
-        // Library Adafruit GFX menggunakan format Horizontal Byte
-        let byteValue = 0;
-        let bitIndex = 0;
+        // Header
+        let output = `// Masukkan kode ini di atas void setup()\n`;
+        output += `#define LOGO_WIDTH  ${finalWidth}\n`;
+        output += `#define LOGO_HEIGHT ${finalHeight}\n`;
+        output += `static const unsigned char PROGMEM logo_bmp[] = {\n`;
+
         let hexString = "";
         let count = 0;
 
-        // Total pixel = 128 * 32
-        // Kita loop setiap pixel, kumpulkan 8 pixel jadi 1 byte
-        for (let i = 0; i < (128 * 32); i++) {
-            // Ambil data warna pixel (kita cuma butuh R karena sudah grayscale)
-            // Pixel data structure: [R, G, B, A, R, G, B, A...]
-            const pixelBrightness = data[i * 4]; 
-            
-            // Logic: Pixel Putih (255) = 1 (Nyala), Hitam (0) = 0 (Mati)
-            if (pixelBrightness > 128) {
-                byteValue |= (0x80 >> bitIndex); // Set bit ke-1
-            }
-
-            bitIndex++;
-            
-            if (bitIndex == 8) {
-                // Sudah 8 bit (1 byte), format ke Hex
-                let hex = "0x" + byteValue.toString(16).toUpperCase().padStart(2, '0');
-                hexString += hex + ", ";
-                count++;
-                if (count % 16 === 0) hexString += "\n"; // Enter setiap 16 byte biar rapi
+        // Loop Pixel untuk konversi ke Hex Array
+        // SSD1306 library membaca: baris per baris (horizontal), 8 pixel per byte.
+        for (let y = 0; y < finalHeight; y++) {
+            for (let x = 0; x < finalWidth; x += 8) {
+                let byte = 0;
                 
-                // Reset
-                byteValue = 0;
-                bitIndex = 0;
+                // Ambil 8 pixel ke samping untuk dijadikan 1 byte
+                for (let b = 0; b < 8; b++) {
+                    const currentX = x + b;
+                    if (currentX < finalWidth) {
+                        const pixelIndex = (y * finalWidth + currentX) * 4;
+                        const brightness = data[pixelIndex]; // Ambil R saja cukup
+                        
+                        if (brightness > 128) {
+                            // Jika Putih, set bit menjadi 1
+                            byte |= (0x80 >> b);
+                        }
+                    }
+                }
+
+                // Format ke Hex (0x00)
+                hexString += "0x" + byte.toString(16).toUpperCase().padStart(2, '0') + ", ";
+                count++;
+                
+                // Enter setiap 12 byte agar rapi dilihat
+                if (count % 12 === 0) hexString += "\n  "; 
             }
         }
 
-        output += hexString;
+        output += "  " + hexString;
         output += "\n};";
-        
+
         document.getElementById('outputCode').value = output;
     }
 </script>
