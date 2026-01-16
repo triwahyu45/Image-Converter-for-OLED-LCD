@@ -15,9 +15,7 @@
             text-align: center; margin: 20px 0;
             background: #000; padding: 0; border: 2px solid var(--accent-color); 
             display: inline-block;
-            /* Ukuran container dipaksa rasio 128x32 tapi diperbesar 4x agar jelas */
-            width: 512px; /* 128 * 4 */
-            height: 128px; /* 32 * 4 */
+            width: 512px; height: 128px; /* 128x32 * 4 */
             position: relative;
         }
         canvas { 
@@ -26,7 +24,9 @@
         }
 
         .controls { background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        input[type="range"] { width: 100%; accent-color: var(--accent-color); cursor: pointer; }
+        
+        /* Fix Warning: touch-action none agar browser gak bingung antara scroll vs geser slider */
+        input[type="range"] { width: 100%; accent-color: var(--accent-color); cursor: pointer; touch-action: none; }
         
         /* Button Group */
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
@@ -35,10 +35,9 @@
         .btn-gen { background: var(--accent-color); color: #fff; }
         .btn-gen:hover { background: #00b8d4; }
         
-        /* Style Tombol Copy Modern */
         .btn-copy { background: #333; color: var(--accent-color); border: 1px solid var(--accent-color); }
         .btn-copy:hover { background: #444; }
-        .btn-copy.copied { background: #00e676; color: #000; border-color: #00e676; } /* Warna Hijau saat dicopy */
+        .btn-copy.copied { background: #00e676; color: #000; border-color: #00e676; }
 
         textarea { width: 100%; height: 250px; margin-top: 10px; background: #0f0f0f; color: #00ddff; border: 1px solid var(--border-color); font-family: monospace; padding: 10px; box-sizing: border-box;}
     </style>
@@ -98,8 +97,11 @@
     const copyBtn = document.getElementById('copyBtn');
     
     let originalImage = null;
-    let visualWidth = 0, visualHeight = 0; // Ukuran tampilan di web
-    let codeWidth = 0, codeHeight = 0;     // Ukuran data asli (Hex)
+    let visualWidth = 0, visualHeight = 0; 
+    let codeWidth = 0, codeHeight = 0;
+    
+    // Variabel untuk optimasi animation frame
+    let isScheduled = false;
     
     const MAX_W = 128;
     const MAX_H = 32;
@@ -110,19 +112,29 @@
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = new Image();
-            img.onload = () => { originalImage = img; updateAll(); }
+            img.onload = () => { originalImage = img; scheduleUpdate(); }
             img.src = event.target.result;
         }
         reader.readAsDataURL(file);
     });
 
-    thresholdSlider.addEventListener('input', function() { updateAll(); });
+    thresholdSlider.addEventListener('input', function() { scheduleUpdate(); });
     
     ratioSlider.addEventListener('input', function() { 
         let real = 2.0 + parseFloat(this.value);
         document.getElementById('realFactor').innerText = real.toFixed(1);
-        updateAll(); 
+        scheduleUpdate(); 
     });
+
+    // --- OPTIMASI AGAR TIDAK MUNCUL WARNING/LAG ---
+    function scheduleUpdate() {
+        if (isScheduled) return;
+        isScheduled = true;
+        requestAnimationFrame(() => {
+            updateAll();
+            isScheduled = false;
+        });
+    }
 
     function updateAll() {
         if (!originalImage) return;
@@ -131,31 +143,31 @@
     }
 
     function calculateDimensions() {
-        // 1. Hitung Ukuran Dasar (Proporsional Murni)
         const ratio = Math.min(MAX_W / originalImage.width, MAX_H / originalImage.height);
         let baseWidth = Math.floor(originalImage.width * ratio);
         let baseHeight = Math.floor(originalImage.height * ratio);
 
-        // 2. Ambil Settingan Slider
-        const sliderVal = parseFloat(ratioSlider.value);
-        const stretchFactor = 2.0 + sliderVal; // Default total jadi 2.0x
+        // Pastikan width minimal 1 agar tidak error div by zero
+        if(baseWidth < 1) baseWidth = 1;
+        if(baseHeight < 1) baseHeight = 1;
 
-        // 3. Hitung Ukuran DATA CODE (Hex) -> Ini yang dikirim ke Arduino
+        const sliderVal = parseFloat(ratioSlider.value);
+        const stretchFactor = 2.0 + sliderVal;
+
         codeWidth = Math.floor(baseWidth * stretchFactor);
         codeHeight = baseHeight;
 
-        // 4. Hitung Ukuran PREVIEW WEB (Visual) -> Ini yang dilihat mata di sini
-        // LOGIKA BARU: 
-        // Kita normalisasi terhadap 2.0.
-        // Jika factor 2.0 (slider 0), maka previewWidth = baseWidth * 1 (Normal).
-        // Jika factor 3.0 (slider +), maka previewWidth = baseWidth * 1.5 (Melar).
+        // Normalisasi preview visual
         visualWidth = Math.floor(baseWidth * (stretchFactor / 2.0));
         visualHeight = baseHeight;
 
-        // Limit mentok di 128
         if (codeWidth > MAX_W) codeWidth = MAX_W;
         if (visualWidth > MAX_W) visualWidth = MAX_W;
         if (codeHeight > MAX_H) codeHeight = MAX_H;
+        
+        // Safety check terakhir
+        if(visualWidth < 1) visualWidth = 1;
+        if(codeWidth < 1) codeWidth = 1;
 
         dimInfo.innerText = `Preview: ${visualWidth}x${visualHeight} | Data Code: ${codeWidth}x${codeHeight}`;
     }
@@ -163,44 +175,42 @@
     function drawPreview() {
         if (!originalImage) return;
 
-        // Bersihkan Canvas
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, MAX_W, MAX_H);
 
-        // Posisi tengah berdasarkan visualWidth (yang dinamis ikut slider)
         const xPos = Math.floor((MAX_W - visualWidth) / 2);
         const yPos = Math.floor((MAX_H - visualHeight) / 2);
 
-        // Gambar Image sesuai ukuran Visual (bisa melar/nyusut dikit tergantung slider)
-        ctx.drawImage(originalImage, xPos, yPos, visualWidth, visualHeight);
+        // Try-Catch agar kalau ada error rendering tidak bikin macet
+        try {
+            ctx.drawImage(originalImage, xPos, yPos, visualWidth, visualHeight);
+            
+            const imageData = ctx.getImageData(0, 0, MAX_W, MAX_H);
+            const data = imageData.data;
+            const limit = parseInt(thresholdSlider.value);
 
-        // Thresholding
-        const imageData = ctx.getImageData(0, 0, MAX_W, MAX_H);
-        const data = imageData.data;
-        const limit = parseInt(thresholdSlider.value);
-
-        for (let i = 0; i < data.length; i += 4) {
-            const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-            const color = avg > limit ? 255 : 0;
-            data[i] = data[i+1] = data[i+2] = color; 
+            for (let i = 0; i < data.length; i += 4) {
+                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                const color = avg > limit ? 255 : 0;
+                data[i] = data[i+1] = data[i+2] = color; 
+            }
+            ctx.putImageData(imageData, 0, 0);
+        } catch(e) {
+            console.error("Render Error:", e);
         }
-        ctx.putImageData(imageData, 0, 0);
     }
 
     function generateCode() {
         if(!originalImage) { alert("Upload gambar dulu!"); return; }
 
-        // --- Generate Data menggunakan Ukuran CODE (Gepeng/Stretch) ---
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = MAX_W;
         tempCanvas.height = MAX_H;
         const tCtx = tempCanvas.getContext('2d');
 
-        // Posisi tengah untuk versi CODE
         const xPos = Math.floor((MAX_W - codeWidth) / 2);
         const yPos = Math.floor((MAX_H - codeHeight) / 2);
 
-        // Gambar versi CODE (Stretch penuh) di canvas bayangan
         tCtx.drawImage(originalImage, xPos, yPos, codeWidth, codeHeight);
 
         const imageData = tCtx.getImageData(xPos, yPos, codeWidth, codeHeight);
