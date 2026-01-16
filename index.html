@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OLED Converter Pro | IG : @Triwahyu45</title>
+    <title>OLED Converter Ultimate | IG : @Triwahyu45</title>
     <style>
         :root { --bg-color: #121212; --card-color: #1e1e1e; --text-color: #e0e0e0; --accent-color: #00ddff; --border-color: #333; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-color); color: var(--text-color); padding: 20px; display: flex; justify-content: center; }
         .container { background: var(--card-color); padding: 2rem; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); max-width: 800px; width: 100%; border: 1px solid var(--border-color); }
         h1 { color: var(--accent-color); margin-top: 0; }
         
-        /* Preview Area FIXED SIZE */
         .preview-container {
             text-align: center; margin: 20px 0;
             background: #000; padding: 0; border: 2px solid var(--accent-color); 
@@ -18,23 +17,20 @@
             width: 512px; height: 128px; /* 128x32 * 4 */
             position: relative;
         }
-        canvas { 
-            display: block; image-rendering: pixelated; 
-            width: 100%; height: 100%;
-        }
+        canvas { display: block; image-rendering: pixelated; width: 100%; height: 100%; }
 
         .controls { background: #252525; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        
-        /* Fix Warning: touch-action none agar browser gak bingung antara scroll vs geser slider */
         input[type="range"] { width: 100%; accent-color: var(--accent-color); cursor: pointer; touch-action: none; }
         
-        /* Button Group */
+        /* Toggle Switch Style */
+        .mode-switch { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; }
+        .mode-btn { background: #333; border: 1px solid #555; color: #aaa; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
+        .mode-btn.active { background: var(--accent-color); color: #000; border-color: var(--accent-color); font-weight: bold; }
+
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
         button { flex: 1; font-weight: bold; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;}
-        
         .btn-gen { background: var(--accent-color); color: #fff; }
         .btn-gen:hover { background: #00b8d4; }
-        
         .btn-copy { background: #333; color: var(--accent-color); border: 1px solid var(--accent-color); }
         .btn-copy:hover { background: #444; }
         .btn-copy.copied { background: #00e676; color: #000; border-color: #00e676; }
@@ -45,7 +41,7 @@
 <body>
 
 <div class="container">
-    <h1>OLED Converter Pro | IG : @Triwahyu45</h1>
+    <h1>OLED Converter Ultimate</h1>
     <input type="file" id="uploadInput" accept="image/*" style="color:white; margin-bottom: 20px;">
 
     <div style="text-align: center;">
@@ -56,32 +52,38 @@
     </div>
 
     <div class="controls" style="border: 1px solid #00ddff;">
-        <label style="color: #00ddff; font-weight: bold;">1. SETTING KOREKSI (STRETCH)</label>
-        <p style="font-size: 0.8rem; margin: 5px 0; color: #aaa;">
-            0 = Normal (Otomatis x2 untuk LCD). Geser slider untuk mengubah lebar.
-        </p>
-        
-        <input type="range" id="ratioFix" min="-1.0" max="1.5" step="0.1" value="0">
-        
-        <div style="text-align: right; font-size: 0.9rem; color: #00ddff;">
-            Data Stretch: <span id="realFactor">2.0</span>x
+        <label style="color: #00ddff; font-weight: bold; display:block; margin-bottom:10px;">1. MODE GAMBAR</label>
+        <div class="mode-switch">
+            <div class="mode-btn" id="modeBlock" onclick="setMode('block')">Block / Logo (Solid)</div>
+            <div class="mode-btn active" id="modeDither" onclick="setMode('dither')">Detail / Foto (Dither)</div>
         </div>
+        <p style="font-size: 0.8rem; color: #aaa; text-align: center;" id="modeDesc">
+            Mode Detail: Bagus untuk foto wajah, pemandangan, atau gambar rumit.
+        </p>
     </div>
 
     <div class="controls">
-        <label>2. Threshold (Hitam/Putih)</label>
-        <input type="range" id="threshold" min="0" max="255" value="128">
+        <label style="font-weight: bold;">2. SETTING VISUAL</label>
+        
+        <div style="margin-top: 10px;">
+            <label style="font-size: 0.9rem;">Koreksi Lebar (Stretch): <span id="realFactor">2.0</span>x</label>
+            <input type="range" id="ratioFix" min="-1.0" max="1.5" step="0.1" value="0">
+        </div>
+
+        <div style="margin-top: 15px;">
+            <label style="font-size: 0.9rem;">Brightness / Threshold: <span id="threshVal">128</span></label>
+            <input type="range" id="threshold" min="0" max="255" value="128">
+        </div>
+
+        <div style="margin-top: 15px;">
+            <label style="font-size: 0.9rem;">Pertajam Kontras: <span id="contrastVal">0</span>%</label>
+            <input type="range" id="contrast" min="-50" max="100" value="20">
+        </div>
     </div>
 
     <div class="btn-group">
-        <button class="btn-gen" onclick="generateCode()">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.7-3.7a1 1 0 0 0 0-1.4 1 1 0 0 0-1.4 0l-2.3 2.3-1.6-1.6a1 1 0 0 0-1.4 0Z"/><path d="M19.4 15a1 1 0 0 0 .6 1.9l2-2a1 1 0 0 0 0-1.4l-2-2a1 1 0 0 0-.6 1.9l.3.3h-4.6a1 1 0 0 0 0 2h4.6l-.3.3Z"/><path d="M3 13a9 9 0 0 1 15.3-6.3"/></svg>
-            Generate Code
-        </button>
-        <button class="btn-copy" id="copyBtn" onclick="copyCode()">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-            <span>Copy Code</span>
-        </button>
+        <button class="btn-gen" onclick="generateCode()">GENERATE CODE</button>
+        <button class="btn-copy" id="copyBtn" onclick="copyCode()">COPY CODE</button>
     </div>
     
     <textarea id="outputCode" readonly placeholder="Klik Generate Code..."></textarea>
@@ -91,21 +93,26 @@
     const canvas = document.getElementById('previewCanvas');
     const ctx = canvas.getContext('2d');
     const input = document.getElementById('uploadInput');
+    
+    // Sliders
     const thresholdSlider = document.getElementById('threshold');
     const ratioSlider = document.getElementById('ratioFix');
+    const contrastSlider = document.getElementById('contrast');
+    
     const dimInfo = document.getElementById('dimInfo');
     const copyBtn = document.getElementById('copyBtn');
     
     let originalImage = null;
+    let currentMode = 'dither'; // Default mode detail
+    
+    // Dimensions
     let visualWidth = 0, visualHeight = 0; 
     let codeWidth = 0, codeHeight = 0;
-    
-    // Variabel untuk optimasi animation frame
     let isScheduled = false;
-    
     const MAX_W = 128;
     const MAX_H = 32;
 
+    // --- INIT ---
     input.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -118,15 +125,27 @@
         reader.readAsDataURL(file);
     });
 
-    thresholdSlider.addEventListener('input', function() { scheduleUpdate(); });
-    
+    // Listeners
+    thresholdSlider.addEventListener('input', function() { document.getElementById('threshVal').innerText = this.value; scheduleUpdate(); });
+    contrastSlider.addEventListener('input', function() { document.getElementById('contrastVal').innerText = this.value; scheduleUpdate(); });
     ratioSlider.addEventListener('input', function() { 
         let real = 2.0 + parseFloat(this.value);
         document.getElementById('realFactor').innerText = real.toFixed(1);
         scheduleUpdate(); 
     });
 
-    // --- OPTIMASI AGAR TIDAK MUNCUL WARNING/LAG ---
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('modeBlock').className = mode === 'block' ? 'mode-btn active' : 'mode-btn';
+        document.getElementById('modeDither').className = mode === 'dither' ? 'mode-btn active' : 'mode-btn';
+        
+        const desc = document.getElementById('modeDesc');
+        if(mode === 'block') desc.innerText = "Mode Block: Bagus untuk Logo simpel, Teks, atau Icon solid.";
+        else desc.innerText = "Mode Detail: Bagus untuk Foto wajah, Pemandangan, atau Gradasi.";
+        
+        scheduleUpdate();
+    }
+
     function scheduleUpdate() {
         if (isScheduled) return;
         isScheduled = true;
@@ -138,85 +157,127 @@
 
     function updateAll() {
         if (!originalImage) return;
-        calculateDimensions();
-        drawPreview(); 
-    }
-
-    function calculateDimensions() {
+        
+        // 1. Calculate Dimensions
         const ratio = Math.min(MAX_W / originalImage.width, MAX_H / originalImage.height);
         let baseWidth = Math.floor(originalImage.width * ratio);
         let baseHeight = Math.floor(originalImage.height * ratio);
+        if(baseWidth < 1) baseWidth = 1; if(baseHeight < 1) baseHeight = 1;
 
-        // Pastikan width minimal 1 agar tidak error div by zero
-        if(baseWidth < 1) baseWidth = 1;
-        if(baseHeight < 1) baseHeight = 1;
-
-        const sliderVal = parseFloat(ratioSlider.value);
-        const stretchFactor = 2.0 + sliderVal;
-
+        const stretchFactor = 2.0 + parseFloat(ratioSlider.value);
         codeWidth = Math.floor(baseWidth * stretchFactor);
         codeHeight = baseHeight;
-
-        // Normalisasi preview visual
         visualWidth = Math.floor(baseWidth * (stretchFactor / 2.0));
         visualHeight = baseHeight;
 
+        // Clamp
         if (codeWidth > MAX_W) codeWidth = MAX_W;
         if (visualWidth > MAX_W) visualWidth = MAX_W;
         if (codeHeight > MAX_H) codeHeight = MAX_H;
-        
-        // Safety check terakhir
-        if(visualWidth < 1) visualWidth = 1;
-        if(codeWidth < 1) codeWidth = 1;
 
         dimInfo.innerText = `Preview: ${visualWidth}x${visualHeight} | Data Code: ${codeWidth}x${codeHeight}`;
+
+        // 2. Draw Preview (Visual)
+        renderToCanvas(ctx, visualWidth, visualHeight, true);
     }
 
-    function drawPreview() {
-        if (!originalImage) return;
+    // --- CORE RENDERING LOGIC (Digunakan untuk Preview & Generate) ---
+    function renderToCanvas(targetCtx, w, h, isPreview) {
+        // Clear background
+        targetCtx.fillStyle = "black";
+        targetCtx.fillRect(0, 0, MAX_W, MAX_H);
 
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, MAX_W, MAX_H);
+        const xPos = Math.floor((MAX_W - w) / 2);
+        const yPos = Math.floor((MAX_H - h) / 2);
 
-        const xPos = Math.floor((MAX_W - visualWidth) / 2);
-        const yPos = Math.floor((MAX_H - visualHeight) / 2);
+        // Draw Image
+        targetCtx.drawImage(originalImage, xPos, yPos, w, h);
 
-        // Try-Catch agar kalau ada error rendering tidak bikin macet
-        try {
-            ctx.drawImage(originalImage, xPos, yPos, visualWidth, visualHeight);
+        // Get Data
+        const imageData = targetCtx.getImageData(0, 0, MAX_W, MAX_H); // Ambil full canvas biar aman
+        const data = imageData.data;
+        
+        const threshold = parseInt(thresholdSlider.value);
+        const contrast = parseInt(contrastSlider.value);
+        const factor = (259 * (contrast + 255)) / (255 * (259 - contrast)); // Rumus kontras
+
+        // PRE-PROCESSING: Grayscale & Contrast
+        // Kita simpan grayscale di channel Red (data[i]) untuk diproses dithering nanti
+        for (let i = 0; i < data.length; i += 4) {
+            let gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
             
-            const imageData = ctx.getImageData(0, 0, MAX_W, MAX_H);
-            const data = imageData.data;
-            const limit = parseInt(thresholdSlider.value);
-
-            for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                const color = avg > limit ? 255 : 0;
-                data[i] = data[i+1] = data[i+2] = color; 
+            // Apply Contrast
+            if (contrast !== 0) {
+                gray = factor * (gray - 128) + 128;
+                if(gray < 0) gray = 0; if(gray > 255) gray = 255;
             }
-            ctx.putImageData(imageData, 0, 0);
-        } catch(e) {
-            console.error("Render Error:", e);
+            
+            // Simpan nilai abu-abu ke semua channel biar preview kelihatan dulu
+            data[i] = data[i+1] = data[i+2] = gray;
+            data[i+3] = 255; // Alpha full
         }
+
+        // BINARIZATION (Dithering vs Threshold)
+        if (currentMode === 'block') {
+            // Simple Threshold
+            for (let i = 0; i < data.length; i += 4) {
+                const val = data[i] > threshold ? 255 : 0;
+                data[i] = data[i+1] = data[i+2] = val;
+            }
+        } else {
+            // FLOYD-STEINBERG DITHERING
+            // Kita butuh width canvas sebenarnya (MAX_W) untuk hitung index pixel tetangga
+            const width = MAX_W; 
+            
+            for (let y = 0; y < MAX_H; y++) {
+                for (let x = 0; x < MAX_W; x++) {
+                    const i = (y * width + x) * 4;
+                    const oldPixel = data[i];
+                    const newPixel = oldPixel < threshold ? 0 : 255;
+                    
+                    data[i] = data[i+1] = data[i+2] = newPixel;
+                    
+                    const quantError = oldPixel - newPixel;
+
+                    // Spread Error to neighbors
+                    if (x + 1 < width) distributeError(data, x + 1, y, quantError * 7 / 16, width);
+                    if (x - 1 >= 0 && y + 1 < MAX_H) distributeError(data, x - 1, y + 1, quantError * 3 / 16, width);
+                    if (y + 1 < MAX_H) distributeError(data, x, y + 1, quantError * 5 / 16, width);
+                    if (x + 1 < width && y + 1 < MAX_H) distributeError(data, x + 1, y + 1, quantError * 1 / 16, width);
+                }
+            }
+        }
+
+        targetCtx.putImageData(imageData, 0, 0);
+        return imageData;
     }
 
+    function distributeError(data, x, y, err, width) {
+        const i = (y * width + x) * 4;
+        data[i] = data[i] + err; // Kita cukup update Red channel karena nanti dicopy ke G/B saat render
+        // Sebenarnya di loop dithering di atas, kita baca data[i] (Red), jadi update Red aja cukup.
+    }
+
+    // --- GENERATE CODE ---
     function generateCode() {
         if(!originalImage) { alert("Upload gambar dulu!"); return; }
 
+        // Buat canvas bayangan ukuran MAX_W x MAX_H
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = MAX_W;
         tempCanvas.height = MAX_H;
         const tCtx = tempCanvas.getContext('2d');
 
-        const xPos = Math.floor((MAX_W - codeWidth) / 2);
-        const yPos = Math.floor((MAX_H - codeHeight) / 2);
+        // Render versi STRETCHED (Data Code) ke canvas bayangan
+        // Kita panggil fungsi render yang sama persis dengan preview, tapi pakai codeWidth
+        renderToCanvas(tCtx, codeWidth, codeHeight, false);
 
-        tCtx.drawImage(originalImage, xPos, yPos, codeWidth, codeHeight);
+        // Ambil data yang sudah jadi (sudah didither/threshold)
+        // Kita crop area tengah sesuai ukuran codeWidth/Height
+        const startX = Math.floor((MAX_W - codeWidth) / 2);
+        const startY = Math.floor((MAX_H - codeHeight) / 2);
+        const fullData = tCtx.getImageData(0, 0, MAX_W, MAX_H).data;
 
-        const imageData = tCtx.getImageData(xPos, yPos, codeWidth, codeHeight);
-        const data = imageData.data;
-        const limit = parseInt(thresholdSlider.value);
-        
         let output = `//Logonya Bang \n#define LOGO_WIDTH  ${codeWidth}\n#define LOGO_HEIGHT ${codeHeight}\nstatic const unsigned char PROGMEM logo_bmp[] = {\n`;
         let hexString = ""; let count = 0;
 
@@ -225,9 +286,13 @@
                 let byte = 0;
                 for (let b = 0; b < 8; b++) {
                     if (x + b < codeWidth) {
-                        const i = ((y * codeWidth + x + b) * 4);
-                        const avg = (data[i] + data[i+1] + data[i+2]) / 3;
-                        if (avg > limit) byte |= (0x80 >> b);
+                        // Koordinat pixel di canvas penuh (128x32)
+                        const canvasX = startX + x + b;
+                        const canvasY = startY + y;
+                        const i = (canvasY * MAX_W + canvasX) * 4;
+                        
+                        // Cek pixel putih
+                        if (fullData[i] > 128) byte |= (0x80 >> b);
                     }
                 }
                 hexString += "0x" + byte.toString(16).toUpperCase().padStart(2, '0') + ", ";
@@ -242,16 +307,12 @@
 
     function copyCode() {
         const copyText = document.getElementById("outputCode");
-        if(copyText.value.length < 1) { return; }
-        
+        if(copyText.value.length < 1) return;
         copyText.select();
         copyText.setSelectionRange(0, 99999);
         navigator.clipboard.writeText(copyText.value).then(() => {
             const originalText = copyBtn.innerHTML;
-            copyBtn.innerHTML = `
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Copied!</span>
-            `;
+            copyBtn.innerHTML = `<span>COPIED!</span>`;
             copyBtn.classList.add('copied');
             setTimeout(() => {
                 copyBtn.innerHTML = originalText;
